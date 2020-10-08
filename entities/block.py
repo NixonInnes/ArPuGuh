@@ -9,10 +9,10 @@ from system.utils import (compass_points, compass_opposite, compass_coord_mod, R
     env_bound, color_bound)
 from system.exceptions import NoDatabaseModel, DirectionMismatch
 
-BLOCK_ENV_PARAMS = [
-    'z',
-    'foliage'
-]
+BLOCK_ENV_PARAMS = {
+    'z': (-100, 100),
+    'foliage': (0, 100)
+}
 
 NOOB_WALL = 25
 
@@ -28,9 +28,9 @@ class CompassPoint:
         setattr(obj, '_'+self.direction, other)
         if getattr(other, '_'+compass_opposite[self.direction]) is None:
             setattr(other, '_'+compass_opposite[self.direction], obj)
-        elif getattr(other, '_'+compass_opposite[self.direction]) is not obj:
-            raise DirectionMismatch(f'Direction mismatch between '
-                                    f'{obj}->{self.direction}->{other}, {other}->{compass_opposite[self.direction]}->{getattr(other, compass_opposite[self.direction])}')
+        #elif not getattr(other, '_'+compass_opposite[self.direction]) == obj:
+        #    raise DirectionMismatch(f'Direction mismatch between '
+        #                            f'{obj}->{self.direction}->{other}, {other}->{compass_opposite[self.direction]}->{getattr(other, compass_opposite[self.direction])}')
 
 
 class Block:
@@ -50,6 +50,8 @@ class Block:
         self.y = y
         
         self.__init_env_params(**kwargs)
+        #self._mod_foliage()
+
         self._set_color()
         self._set_collidable()
 
@@ -73,13 +75,27 @@ class Block:
             setattr(self, param+'_dist_scale', kwargs.get(param+'_dist_scale', 3))
 
     def _set_color(self):
-        r = min(100 + self.z, 255)
-        g = min(100 + self.z, 255)
-        b = min(100 + self.z, 255)
+        if self.z < config.sea_level:
+            r = min(50 + self.z*10, 255)
+            g = min(150 + self.z*10, 255)
+            b = 255
+            
+        elif self.z < config.grass_level:
+            r = min(0 + self.z, 255)
+            g = min(100 + self.z, 255)
+            b = min(0 + self.z, 255)
+        else:
+            r = min(25 + self.z, 255)
+            g = min(100 + self.z, 255)
+            b = min(25 + self.z, 255)
         self.color = RGB(r, g, b)
 
     def _set_collidable(self):
         self.collidable = True if self.z > NOOB_WALL else False
+
+    @property
+    def _foliage(self):
+        return int(round(max(0, (self.foliage+100)/2 - (self.z/3)**2)))
 
     @staticmethod
     def load(id):
@@ -91,6 +107,7 @@ class Block:
     @staticmethod
     def load_from_db_obj(db_obj):
         block = Block(**db_obj.__dict__)
+        block.db_obj = db_obj
         return block
 
     def save(self, commit=True):
@@ -140,17 +157,24 @@ class Block:
     def img_draw(self, img):
         draw = ImageDraw.Draw(img)
         lower_adjs = []
-        for direction in ['w', 'sw', 's']:
+        for direction in ['w', 's']:
             block = getattr(self, direction)
             if block:
                 lower_adjs.append(block)
         
         if lower_adjs:
-            height_diff = self.z - statistics.mean([b.z for b in lower_adjs])
+            height_diff = self.z - statistics.mean([b.z for b in lower_adjs])//1
         else:
             height_diff = 0
 
-        border_color = RGB(*[color_bound(200-height_diff**2)]*3)
+        if height_diff <= 0:
+            color_mod = 0
+        else:
+            color_mod = -5 * height_diff
+
+        border_color = RGB(color_bound(self.color.r + color_mod),
+                           color_bound(self.color.g + color_mod),
+                           color_bound(self.color.b + color_mod))
 
         if self.collidable:
             draw.rectangle(self.pil_coords, 
@@ -160,11 +184,15 @@ class Block:
             draw.rectangle(self.pil_coords, 
                            fill=self.color, 
                            outline=border_color)
-        grass_image = Image.open('assets/foliage/grass.png', mode='alpha')
-        for i in range(max(20, (self.foliage+100)//5)):
+        grass_image = Image.open('assets/foliage/grass.png')
+        for i in range(self._foliage//10):
             img.paste(grass_image,
                       (randint(self.pil_coords[0], self.pil_coords[2]),
-                       randint(self.pil_coords[3], self.pil_coords[1])))
-        
+                       randint(self.pil_coords[3], self.pil_coords[1])),
+                      grass_image)
+
+    def __eq__(self, other):
+        return self.db_obj.id == other.db_obj.id
+
     def __repr__(self):
         return f'<Block({self.x}, {self.y})>'
