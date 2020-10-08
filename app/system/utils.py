@@ -7,6 +7,7 @@ import config
 
 RGB = namedtuple('RGB', ('r', 'g', 'b'))
 Coord = namedtuple('Coord', ('x', 'y'))
+Rect = namedtuple('Rect', ('x1', 'y1', 'x2', 'y2'))
 
 
 def distance(x1, y1, x2, y2):

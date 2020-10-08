@@ -1,4 +1,4 @@
-assets/chunks/
+app/assets/chunks/
 
 # Helper batches
 __*.bat

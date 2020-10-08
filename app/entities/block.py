@@ -4,10 +4,10 @@ from numpy.random import normal
 from PIL import Image, ImageDraw
 
 import config
-from database import session, models
-from system.utils import (compass_points, compass_opposite, compass_coord_mod, RGB,
+from app.database import session, models
+from app.system.utils import (compass_points, compass_opposite, compass_coord_mod, RGB,
     env_bound, color_bound)
-from system.exceptions import NoDatabaseModel, DirectionMismatch
+from app.system.exceptions import NoDatabaseModel, DirectionMismatch
 
 BLOCK_ENV_PARAMS = {
     'z': (-100, 100),
@@ -184,14 +184,14 @@ class Block:
             draw.rectangle(self.pil_coords, 
                            fill=self.color, 
                            outline=border_color)
-        grass_image = Image.open('assets/foliage/grass.png')
+        grass_image = Image.open('app/assets/foliage/grass.png')
         for i in range(self._foliage//10):
             img.paste(grass_image,
                       (randint(self.pil_coords[0], self.pil_coords[2]),
                        randint(self.pil_coords[3], self.pil_coords[1])),
                       grass_image)
-        rock_image = Image.open('assets/rocks/rocks.png')
-        for i in range(abs(self.z)//15):
+        rock_image = Image.open('app/assets/rocks/rocks.png')
+        for i in range(abs(self.z)//15*(1 if self.z < config.grass_level else 2)):
             img.paste(rock_image,
                       (randint(self.pil_coords[0], self.pil_coords[2]),
                        randint(self.pil_coords[3], self.pil_coords[1])),

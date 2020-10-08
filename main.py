@@ -1,13 +1,11 @@
 import pyglet
 
-from entities.world import World
-from system.window import Window
+from app import world
 
 
 def main():
-    world = World()
-    window = Window(world)
-    pyglet.clock.schedule_interval(window.update, 1/120.0)
+    window = world.get_window()
+    pyglet.clock.schedule_interval(world.update, 1/120.0)
     pyglet.app.run()
 
 main()

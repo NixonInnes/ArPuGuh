@@ -1,13 +1,20 @@
 from pyglet.shapes import Rectangle
 
-from system.component import PhysicalComponent
+import config
+from app.entities.base import Entity
+from app.system.utils import RGB
 
-class Wall(PhysicalComponent):
-    def __init__(self, *args, **kwargs):
-        super(Wall, self).__init__(*args, **kwargs)
-        self.width = kwargs.get('width', 10)
-        self.height = kwargs.get('height', 10)
-        self.color = kwargs.get('color', (255,255,255))
+class Wall(Entity):
+    defaults = {
+        'width': config.block_width,
+        'height': config.block_height
+    }
+
+    attributes = {
+        'color': RGB(255,255,255)
+    }
+    
+    def init(self, **kwargs):
         self.shape = Rectangle(self.x, self.y,
                                height=self.height,
                                width=self.width,

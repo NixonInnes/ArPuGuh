@@ -3,11 +3,11 @@ import pyglet
 from random import randint
 
 import config
-from system.component import PhysicalComponent
-from system.utils import calc_1D_intersect
+from app.entities.base import Entity
+from app.system.utils import calc_1D_intersect
 
 
-class Mob(PhysicalComponent):
+class Mob(Entity):
 
     def __init__(self, *args, **kwargs):
         """
@@ -19,7 +19,7 @@ class Mob(PhysicalComponent):
         self.dead = False
         self.death_timer = 300
         self.speed = kwargs.get('speed', 5)
-        self.image = pyglet.image.load('assets/mob.png')
+        self.image = pyglet.image.load('app/assets/mob.png')
         self.sprite = pyglet.sprite.Sprite(self.image, self.x, self.y, 
                                            batch=self.batch,
                                            group=self.group)

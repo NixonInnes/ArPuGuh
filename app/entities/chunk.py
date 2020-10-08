@@ -1,17 +1,25 @@
+import os
 import itertools
 import numpy as np
 from collections import namedtuple
 from random import randint
 from PIL import Image, ImageDraw
 
+from pyglet.graphics import Batch, OrderedGroup
+from pyglet.image import load as load_image
+from pyglet.sprite import Sprite
+
 import config
-from database import session, models
-from entities.block import Block
-from system.exceptions import NoDatabaseModel, DirectionMismatch
-from system.utils import RGB
+from app import world
+from app.database import session, models
+from app.entities.block import Block
+from app.entities.wall import Wall
+from app.system.exceptions import NoDatabaseModel, DirectionMismatch
+from app.system.utils import RGB, Coord
 
 
 class LazyChunkLoader:
+
     def __init__(self, direction):
         self.direction = direction
 
@@ -26,8 +34,8 @@ class LazyChunkLoader:
             'w':  (obj.x-1, obj.y),
             'nw': (obj.x-1, obj.y+1)
         }
-        print(f'loading chunk {dir_map[self.direction]}')
-        return Chunk.load(*dir_map[self.direction], create=True)
+        print(f'Loading chunk {dir_map[self.direction]}')
+        return world.load_chunk(*dir_map[self.direction], create=True)
 
 
 class Chunk:
@@ -40,6 +48,7 @@ class Chunk:
     w = LazyChunkLoader('w')
     nw = LazyChunkLoader('nw')
 
+
     def __init__(self, x, y, name=None):
         self.db_obj = None
         self.x = x
@@ -50,14 +59,35 @@ class Chunk:
         self.n_rows = config.window_height//config.block_height
         self.n_cols = config.window_width//config.block_width
 
-        if name is None:
-            self.name = f'{self.__class__.__name__}({self.x}, {self.y})'
-        else:
-            self.name = name      
+        self.players = []
+        self.mobs = []
+        self.walls = []
+        self.objects = []
+        
+        self.sprite = None
 
+        self.name = name if name else \
+                    f'{self.__class__.__name__}({self.x}, {self.y})'
+     
         self.grid = []
         self.blocks = []
 
+        self.draw_batch = Batch()
+        self.background = OrderedGroup(0)
+        self.foreground = OrderedGroup(1)
+
+
+    @property
+    def game_objects(self):
+        return self.players + self.mobs + self.walls + self.objects
+
+
+    @property
+    def coords(self):
+        return Coord(self.x, self.y)
+    
+
+    # TODO: num of loops over the blocks is too damn high!
     def load_blocks(self):
         if self.db_obj is None:
             raise NoDatabaseObject
@@ -67,6 +97,22 @@ class Chunk:
                                     key=lambda block:(block.y, block.x))).reshape(self.n_rows,
                                                                                   self.n_cols)
         self.link_blocks()
+
+    def set_walls(self):
+        self.walls.clear()
+        for block in self.blocks:
+            if block.collidable:
+                wall = Wall(x=block.x,
+                            y=block.y,
+                            width=block.width,
+                            height=block.height,
+                            color=block.color,
+                            # Note: don't really need to draw these
+                            #color=(255,0,0),
+                            #batch=self.draw_batch
+                            )
+                self.objects.append(wall)
+
 
     def link_blocks(self):
         for r_i, row in enumerate(self.grid):
@@ -79,16 +125,6 @@ class Chunk:
                 if b_i != 0:
                     block.w = self.grid[r_i][b_i-1]
 
-    def update(self):
-        if self.db_obj is None:
-            raise NoDatabaseObject
-        self.x = self.db_obj.x
-        self.y = self.db_obj.y
-        self.width = self.db_obj.width
-        self.height = self.db_obj.height
-        self.name = self.db_obj.name
-        self.load_blocks()
-
 
     @staticmethod
     def load(x, y, create=False):
@@ -99,11 +135,23 @@ class Chunk:
                 chunk = Chunk(x, y)
                 chunk.build_blocks()
                 chunk.save()
-                return chunk
-            return None
+            else:
+                return None
+        else:
+            chunk = Chunk.load_from_db_obj(loaded_chunk)
 
-        chunk = Chunk.load_from_db_obj(loaded_chunk)
+        if not os.path.isfile(chunk.img_file):
+            chunk.build_img()
+        
+        bg_img = load_image(chunk.img_file)
+        chunk.sprite = Sprite(bg_img, 0, 0, 
+                              batch=chunk.draw_batch, 
+                              group=chunk.background)
+
+        chunk.set_walls()
+        
         return chunk
+
 
     @staticmethod
     def load_from_db_obj(db_obj):
@@ -114,6 +162,7 @@ class Chunk:
         chunk.db_obj = db_obj
         chunk.load_blocks()
         return chunk
+
 
     def save(self):
         if self.db_obj is None:
@@ -129,10 +178,12 @@ class Chunk:
         session.add(self.db_obj)
         session.commit()
 
+
     @property
     def img_file(self):
-        return f'assets/chunks/{self.name}.png'
+        return f'app/assets/chunks/{self.name}.png'
     
+
     def build_blocks(self):
         chunk_w = Chunk.load(self.x-1, self.y)
         chunk_s = Chunk.load(self.x, self.y-1)
@@ -210,8 +261,32 @@ class Chunk:
         self.save()
         self.blocks = list(itertools.chain.from_iterable(self.grid))
 
+
     def build_img(self):
         img = Image.new(mode='RGB', size=(self.width, self.height), color=(255,255,255))
         for block in self.blocks:
             block.img_draw(img)
         img.save(self.img_file)
+
+
+    def add_mobs(self, n):
+        for i in range(n):
+            mob = Mob(x=randint(0, config.window_width),
+                      y=randint(0, config.window_height),
+                      width=50,
+                      height=50,
+                      batch=self.draw_batch,
+                      group=self.foreground)
+            self.mobs.append(mob)
+
+
+    def update(self):
+        collision_checked = []
+        for obj in self.game_objects:
+            obj.update()
+            if obj.mobile:
+                for other_obj in self.game_objects:
+                    if other_obj.collidable and other_obj not in collision_checked:
+                        if obj.collides_with(other_obj):
+                            obj.on_collision(other_obj)
+            collision_checked.append(obj)
