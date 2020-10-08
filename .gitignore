@@ -1,6 +1,9 @@
 # Helper batches
 __*.bat
 
+# database files
+*.sqlite
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
