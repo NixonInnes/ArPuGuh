@@ -20,7 +20,8 @@ class Window(PyWindow):
         self.alive = True
         super(Window, self).__init__(*args, 
                                     width=config.window_width, 
-                                    height=config.window_height, 
+                                    height=config.window_height,
+                                    fullscreen=True,
                                     **kwargs)
         self.game_objects = []
         self.window_grid = []

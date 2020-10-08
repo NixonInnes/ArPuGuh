@@ -20,7 +20,7 @@ class Player(PhysicalComponent):
         self.mobile = True
         self.dead = False
         self.speed = kwargs.get('speed', 5)
-        self.image = pyglet.image.load('assets\\player.png')
+        self.image = pyglet.image.load('assets/player.png')
         self.sprite = pyglet.sprite.Sprite(self.image, self.x, self.y, 
                                            batch=self.batch,
                                            group=self.group)

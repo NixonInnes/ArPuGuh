@@ -19,7 +19,7 @@ class Mob(PhysicalComponent):
         self.dead = False
         self.death_timer = 300
         self.speed = kwargs.get('speed', 5)
-        self.image = pyglet.image.load('assets\\mob.png')
+        self.image = pyglet.image.load('assets/mob.png')
         self.sprite = pyglet.sprite.Sprite(self.image, self.x, self.y, 
                                            batch=self.batch,
                                            group=self.group)

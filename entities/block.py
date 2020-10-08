@@ -190,6 +190,13 @@ class Block:
                       (randint(self.pil_coords[0], self.pil_coords[2]),
                        randint(self.pil_coords[3], self.pil_coords[1])),
                       grass_image)
+        rock_image = Image.open('assets/rocks/rocks.png')
+        for i in range(abs(self.z)//15):
+            img.paste(rock_image,
+                      (randint(self.pil_coords[0], self.pil_coords[2]),
+                       randint(self.pil_coords[3], self.pil_coords[1])),
+                      rock_image)
+
 
     def __eq__(self, other):
         return self.db_obj.id == other.db_obj.id
