@@ -84,7 +84,7 @@ class Chunk:
 
 
     @property
-    def coords(self):
+    def coord(self):
         return Coord(self.x, self.y)
     
 

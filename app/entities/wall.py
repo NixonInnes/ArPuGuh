@@ -25,6 +25,9 @@ class Wall(Entity):
     def on_collision(self, obj):
         pass
 
+    def take_damage(self, source, damage):
+        pass
+
     def update(self):
         pass
 

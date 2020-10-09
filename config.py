@@ -9,3 +9,4 @@ env_param_low_bound = -100
 env_param_high_bound = 100
 sea_level = 0
 grass_level = 25
+chunk_in_memory_distance = 2

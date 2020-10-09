@@ -1,7 +1,7 @@
 import config
 from app.database import session, models
 from app.system.window import Window
-from app.system.utils import Coord
+from app.system.utils import Coord, distance
 
 
 class World:
@@ -9,6 +9,7 @@ class World:
     def __init__(self):
         self.loaded_chunks = {}
         self.chunks_to_load = {}
+        self.chunks_to_unload = []
         self.players = []
 
 
@@ -47,8 +48,20 @@ class World:
         return chunk
         
 
-    def update(self, time):
+    def update(self, dt):
+        chunks_to_unload = []
         for chunk in self.loaded_chunks.values():
-            chunk.update()
+            players_near_chunk = []
+            for player in self.players:
+                if distance(player.chunk.x, player.chunk.y,
+                            chunk.x, chunk.y) > config.chunk_in_memory_distance:
+                    players_near_chunk.append(False)
+                else:
+                    players_near_chunk.append(True)
+            if not any(players_near_chunk):
+                chunks_to_unload.append(chunk.coord)
+            else:
+                chunk.update()
+        [self.loaded_chunks.pop(coord) for coord in chunks_to_unload]
         self.loaded_chunks.update(self.chunks_to_load)
         self.chunks_to_load.clear()

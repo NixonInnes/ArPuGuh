@@ -38,6 +38,9 @@ class Window(PyWindow):
         else:
             self.player.sprinting = False
 
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.player.cursor_coord = Coord(x, y)
+
     def on_mouse_press(self, x, y, button, modifiers):
         #if modifiers & key.MOD_SHIFT:
         #    self.player.sprinting = True
@@ -56,7 +59,8 @@ class Window(PyWindow):
 
     def on_mouse_release(self, x, y, button, modifier):
         #self.player.sprinting = False
-        self.player.moving_to = None
+        #self.player.moving_to = None
+        pass
 
     
     def on_draw(self):

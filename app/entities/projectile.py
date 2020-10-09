@@ -60,6 +60,7 @@ class Projectile(Entity):
         if self.sprite and not self.dead:
             self.x += self.velocity_x
             self.y += self.velocity_y
+            self.check_bounds()
             self.sprite.update(x=self.x, y=self.y)
 
 

@@ -22,6 +22,7 @@ class Player(Entity):
     }
 
     attributes = {
+        'cursor_coord': Coord(0,0),
         'dead': False,
         'sprinting': False,
         'image_file': 'app/assets/player.png',
@@ -74,6 +75,7 @@ class Player(Entity):
         chunk.players.append(self)
         self.sprite.batch = chunk.draw_batch
         self.sprite.group = chunk.foreground
+        self.moving_to = None
 
 
     def on_collision(self, obj):
@@ -128,18 +130,25 @@ class Player(Entity):
 
 
     def fire_proj(self):
+        velocity = 10
+        p_x = self.cursor_coord.x - self.center.x
+        p_y = self.cursor_coord.y - self.center.y
+        d = distance(self.center.x, self.center.y, 
+                     self.cursor_coord.x, self.cursor_coord.y)
+        r = velocity/d
+        r_p = 30/d
         if not self.projectile_cooldown:
             proj = Projectile(owner=self,
                               chunk=self.chunk,
-                              x=self.center.x,
-                              y=self.y+self.height,
+                              x=self.center.x+p_x*r_p,
+                              y=self.center.y+p_y*r_p,
                               damage=d20(num=self.stats.int//3),
-                              velocity_x=1,
-                              velocity_y=1,
+                              velocity_x=p_x*r,
+                              velocity_y=p_y*r,
                               batch=self.chunk.draw_batch,
                               group=self.chunk.foreground)
             self.chunk.objects.append(proj)
-            self.projectile_cooldown = 100
+            self.projectile_cooldown = 10
 
 
     def update_cooldowns(self):
