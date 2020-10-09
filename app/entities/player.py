@@ -6,33 +6,47 @@ from pyglet.graphics import GL_POINTS
 
 import config
 from app import world
-from app.entities.base import Entity
-from app.system.utils import calc_1D_intersect
+from app.entities.base import Entity, Stats
+from app.entities.projectile import Projectile
+from app.system.dice import d6, d20
+from app.system.utils import calc_1D_intersect, Coord, distance
 
-SPRINT_MOD = 2
+SPRINT_MOD = 1.5
 
 class Player(Entity):
     defaults = {
         'collidable': True,
         'mobile': True,
         'width': 50,
-        'height': 50
+        'height': 50,
     }
 
     attributes = {
         'dead': False,
-        'speed': 5,
         'sprinting': False,
         'image_file': 'app/assets/player.png',
         'moving_to': None,
-        'chunk': None
+        'chunk': None,
+        'in_combat': False,
+        'in_combat_with': [],
+        'attack_cooldown': 0,
+        'projectile_cooldown': 0
     }
 
     def init(self, **kwargs):
         self.image = pyglet.image.load(self.image_file)
         self.sprite = pyglet.sprite.Sprite(self.image, self.x, self.y)
         self.key_handler = key.KeyStateHandler()
+        self.stats = Stats()
 
+
+    @property
+    def speed(self):
+        walk_speed = self.stats.dex//2
+        if self.sprinting:
+            return walk_speed * SPRINT_MOD
+        return walk_speed
+    
 
     def check_bounds(self):
         if (self.x + self.width) > config.window_width:
@@ -76,35 +90,96 @@ class Player(Entity):
                 self.y = obj.y - self.height
             else:
                 self.y = obj.y + obj.height
+        self.moving_to = None
 
 
-    def update(self):
-        if self.sprinting:
-            speed = self.speed*SPRINT_MOD
-        else:
-            speed = self.speed
+    def parse_keys(self):
+        x, y = self.x, self.y
 
+        if self.key_handler[key.UP]:
+            y += self.speed
+        if self.key_handler[key.RIGHT]:
+            x += self.speed
+        if self.key_handler[key.DOWN]:
+            y -= self.speed
+        if self.key_handler[key.LEFT]:
+            x -= self.speed
+
+        move_to = Coord(x, y)
+        if move_to != self.coord:
+            self.moving_to = move_to
+
+        if self.key_handler[key.A]:
+            self.attack()
+
+        if self.key_handler[key.S]:
+            self.fire_proj()
+
+
+    def attack(self):
+        if not self.attack_cooldown:
+            atk_range = 75
+            for mob in self.chunk.mobs:
+                if distance(*self.coord, *mob.coord) < atk_range:
+                    self.in_combat = True
+                    self.in_combat_with.append(mob)
+                    self.do_damage(mob, d6(num=self.stats.str//2))
+            self.attack_cooldown = 50
+
+
+    def fire_proj(self):
+        if not self.projectile_cooldown:
+            proj = Projectile(owner=self,
+                              chunk=self.chunk,
+                              x=self.center.x,
+                              y=self.y+self.height,
+                              damage=d20(num=self.stats.int//3),
+                              velocity_x=1,
+                              velocity_y=1,
+                              batch=self.chunk.draw_batch,
+                              group=self.chunk.foreground)
+            self.chunk.objects.append(proj)
+            self.projectile_cooldown = 100
+
+
+    def update_cooldowns(self):
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+        if self.projectile_cooldown > 0:
+            self.projectile_cooldown -= 1
+
+
+    def do_damage(self, target, dmg):
+        target.take_damage(self, dmg)
+
+
+    def take_damage(self, source, dmg):
+        self.in_combat = True
+        self.in_combat_with.append(source)
+        self.stats.hp -= dmg
+        if self.stats.hp < 1:
+            self.dead = True
+        print(f'{self.name} took {dmg} damage from {source.name}!')
+
+
+    def move(self):
         if self.moving_to:
             dist_from_target = np.sqrt((self.x-self.moving_to.x)**2 + 
                                        (self.y-self.moving_to.y)**2)
             
-            if dist_from_target <= speed:
+            if dist_from_target <= self.speed:
                 self.x = self.moving_to.x
                 self.y = self.moving_to.y
             else:
-                dist_ratio = speed/dist_from_target
+                dist_ratio = self.speed/dist_from_target
                 self.x = (1.0 - dist_ratio)*self.x + dist_ratio*self.moving_to.x
                 self.y = (1.0 - dist_ratio)*self.y + dist_ratio*self.moving_to.y
-        else:
-            if self.key_handler[key.UP]:
-                self.y += speed
-            if self.key_handler[key.RIGHT]:
-                self.x += speed
-            if self.key_handler[key.DOWN]:
-                self.y -= speed
-            if self.key_handler[key.LEFT]:
-                self.x -= speed
 
+
+    def update(self):
+        self.update_cooldowns()
+        self.parse_keys()
+        self.move()
         self.check_bounds()
         self.sprite.update(x=self.x, y=self.y)
 

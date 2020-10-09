@@ -10,6 +10,7 @@ class Entity(metaclass=abc.ABCMeta):
         'active': True,
         'render': True,
         'debug': False,
+        'dead': False,
 
         'batch': None,
         'group': None,
@@ -60,6 +61,10 @@ class Entity(metaclass=abc.ABCMeta):
     def draw(self):
         pass
 
+    @property
+    def coord(self):
+        return Coord(self.x, self.y)
+    
 
     @property
     def center(self):
@@ -94,7 +99,33 @@ class Entity(metaclass=abc.ABCMeta):
         pass
         
         
+class Stats:
+    __base = 16
+    __stats = [
+        'str',
+        'dex',
+        'wis',
+        'int',
+        'con',
+        'lck'
+    ]
 
+    def __init__(self, modifiers={}):
+        for stat in self.__stats:
+            setattr(self, stat, self.__base+modifiers.get(stat, 0))
+
+        self.hp = self.base_hp
+        self.mn = self.base_mn
+
+    @property
+    def base_hp(self):
+        return self.con*20
+
+    @property
+    def base_mn(self):
+        return self.wis*40
+    
+    
 
     
 

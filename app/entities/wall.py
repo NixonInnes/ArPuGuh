@@ -7,7 +7,8 @@ from app.system.utils import RGB
 class Wall(Entity):
     defaults = {
         'width': config.block_width,
-        'height': config.block_height
+        'height': config.block_height,
+        'collidable': True
     }
 
     attributes = {

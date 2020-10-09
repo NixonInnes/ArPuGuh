@@ -39,6 +39,9 @@ class World:
 
     def load_chunk(self, x, y, create=False):
         from app.entities.chunk import Chunk
+        chunk = self.loaded_chunks.get(Coord(x,y))
+        if chunk is not None:
+            return chunk
         chunk = Chunk.load(x, y, create)
         self.chunks_to_load[Coord(x, y)] = chunk
         return chunk

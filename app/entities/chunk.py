@@ -13,6 +13,7 @@ import config
 from app import world
 from app.database import session, models
 from app.entities.block import Block
+from app.entities.mob import Mob
 from app.entities.wall import Wall
 from app.system.exceptions import NoDatabaseModel, DirectionMismatch
 from app.system.utils import RGB, Coord
@@ -149,6 +150,7 @@ class Chunk:
                               group=chunk.background)
 
         chunk.set_walls()
+        chunk.add_mobs(5)
         
         return chunk
 
@@ -271,7 +273,8 @@ class Chunk:
 
     def add_mobs(self, n):
         for i in range(n):
-            mob = Mob(x=randint(0, config.window_width),
+            mob = Mob(chunk=self,
+                      x=randint(0, config.window_width),
                       y=randint(0, config.window_height),
                       width=50,
                       height=50,
@@ -286,7 +289,10 @@ class Chunk:
             obj.update()
             if obj.mobile:
                 for other_obj in self.game_objects:
-                    if other_obj.collidable and other_obj not in collision_checked:
+                    if other_obj is obj:
+                        pass
+                    elif other_obj.collidable:
                         if obj.collides_with(other_obj):
                             obj.on_collision(other_obj)
+                            other_obj.on_collision(obj)
             collision_checked.append(obj)
