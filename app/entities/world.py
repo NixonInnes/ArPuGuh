@@ -28,13 +28,16 @@ class World:
 
     def init_player(self, name='player'):
         from app.entities.player import Player
-        player = Player(x=config.window_width//2,
+        chunk = self.get_origin()
+        player = Player(chunk=chunk,
+                        x=config.window_width//2,
                         y=config.window_height//2,
                         width=50,
                         height=50,
-                        name=name)
+                        name=name,
+                        group=chunk.foreground)
         self.players.append(player)
-        player.move_to_chunk(self.get_origin())
+        player.move_to_chunk(chunk)
         return player
 
 

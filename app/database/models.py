@@ -23,7 +23,7 @@ class Block(Base):
 
     def __repr__(self):
       return '<Block id: %s, chunk: %s, coord: (%s,%s)>' % (self.id, 
-                                                            self.chunk.id if self.chunk else '-',
+                                                            self.chunk.id if self.chunk_id else '-',
                                                             self.x, 
                                                             self.y)
 

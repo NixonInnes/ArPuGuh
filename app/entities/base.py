@@ -1,11 +1,10 @@
-import abc
 from pyglet.shapes import Rectangle
 from collections import namedtuple
 
 from app.system.utils import Coord, Rect
 
 
-class Entity(metaclass=abc.ABCMeta):
+class Entity():
     __defaults = {
         'active': True,
         'render': True,
@@ -48,16 +47,13 @@ class Entity(metaclass=abc.ABCMeta):
         self.init(**kwargs)
 
 
-    @abc.abstractmethod
     def init(self, **kwargs):
         pass
     
-    @abc.abstractmethod
     def update(self):
         pass
 
 
-    @abc.abstractmethod
     def draw(self):
         pass
 
@@ -124,6 +120,8 @@ class Stats:
     @property
     def base_mn(self):
         return self.wis*40
+
+    
     
     
 

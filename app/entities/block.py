@@ -1,6 +1,7 @@
+import os
 import statistics
 from random import randint
-from numpy.random import normal
+from numpy.random import normal, choice
 from PIL import Image, ImageDraw
 
 import config
@@ -14,7 +15,7 @@ BLOCK_ENV_PARAMS = {
     'foliage': (0, 100)
 }
 
-NOOB_WALL = 25
+NOOB_WALL = 100
 
 class CompassPoint:
     def __init__(self, direction):
@@ -79,15 +80,24 @@ class Block:
             r = min(50 + self.z*10, 255)
             g = min(150 + self.z*10, 255)
             b = 255
-            
-        elif self.z < config.grass_level:
-            r = min(0 + self.z, 255)
-            g = min(100 + self.z, 255)
-            b = min(0 + self.z, 255)
+        elif self.z < config.sand_level:
+            r = 255
+            g = 255
+            b = 155
+        #elif self.z < config.grass_level:
+        #    r = min(0 + self.z, 255)
+        #    g = min(100 + self.z, 255)
+        #    b = min(0 + self.z, 255)
+
+        elif self.z > config.snow_level:
+            r = 204
+            g = 229
+            b = 255
+        
         else:
-            r = min(25 + self.z, 255)
-            g = min(100 + self.z, 255)
-            b = min(25 + self.z, 255)
+            r = min(20 + self.z, 255)
+            g = min(90 + self.z, 255)
+            b = min(20 + self.z, 255)
         self.color = RGB(r, g, b)
 
     def _set_collidable(self):
@@ -95,7 +105,11 @@ class Block:
 
     @property
     def _foliage(self):
-        return int(round(max(0, (self.foliage+100)/2 - (self.z/3)**2)))
+        if self.z < config.sea_level:
+            z_mod = (self.z**3)/100
+        else:
+            z_mod = (self.z**2)/100
+        return randint(0, max(0, (self.foliage+100)/2 - abs(z_mod))//1)
 
     @staticmethod
     def load(id):
@@ -139,20 +153,20 @@ class Block:
         properties += [getattr(block, property_) for block in self.adj_blocks]
         return statistics.mean(properties)
        
-    def create_direction(self, direction):
-        if direction not in compass_points:
-            raise Exception('Invalid compass direction')
-        coord_mod = compass_coord_mod[direction]
-        env_params = {param: env_bound(self.get_local(param) + \
-                                       normal(scale=getattr(self, param+'_dist_scale'))/2)
-                      for param in BLOCK_ENV_PARAMS}
-        new_block = Block(
-            x=self.x+coord_mod.x*config.block_width,
-            y=self.y+coord_mod.y*config.block_height,
-            **env_params
-        )
-        setattr(self, direction, new_block)
-        return new_block
+    #def create_direction(self, direction):
+    #    if direction not in compass_points:
+    #        raise Exception('Invalid compass direction')
+    #    coord_mod = compass_coord_mod[direction]
+    #    env_params = {param: env_bound(self.get_local(param) + \
+    #                                   normal(scale=getattr(self, param+'_dist_scale'))/2)
+    #                  for param in BLOCK_ENV_PARAMS}
+    #    new_block = Block(
+    #        x=self.x+coord_mod.x*config.block_width,
+    #        y=self.y+coord_mod.y*config.block_height,
+    #        **env_params
+    #    )
+    #    setattr(self, direction, new_block)
+    #    return new_block
 
     def img_draw(self, img):
         draw = ImageDraw.Draw(img)
@@ -170,7 +184,7 @@ class Block:
         if height_diff <= 0:
             color_mod = 0
         else:
-            color_mod = -5 * height_diff
+            color_mod = -10 * height_diff
 
         border_color = RGB(color_bound(self.color.r + color_mod),
                            color_bound(self.color.g + color_mod),
@@ -184,18 +198,43 @@ class Block:
             draw.rectangle(self.pil_coords, 
                            fill=self.color, 
                            outline=border_color)
-        grass_image = Image.open('app/assets/foliage/grass.png')
-        for i in range(self._foliage//10):
-            img.paste(grass_image,
-                      (randint(self.pil_coords[0], self.pil_coords[2]),
-                       randint(self.pil_coords[3], self.pil_coords[1])),
-                      grass_image)
-        rock_image = Image.open('app/assets/rocks/rocks.png')
+
         for i in range(abs(self.z)//15*(1 if self.z < config.grass_level else 2)):
+            rock_image = Image.open('app/assets/rocks/'+
+                                    choice(os.listdir('app/assets/rocks')))
             img.paste(rock_image,
                       (randint(self.pil_coords[0], self.pil_coords[2]),
                        randint(self.pil_coords[3], self.pil_coords[1])),
                       rock_image)
+
+        if self.z > config.snow_level-15:
+            for i in range(15 - abs(config.snow_level-self.z)):
+                snow_image = Image.open('app/assets/snow/'+
+                                        choice(os.listdir('app/assets/snow')))
+                img.paste(snow_image,
+                          (randint(self.pil_coords[0], self.pil_coords[2]),
+                           randint(self.pil_coords[3], self.pil_coords[1])),
+                          snow_image)
+        
+        for i in range(self._foliage//10):
+            if self.z > config.sea_level and self.z < config.sand_level:
+                pass
+            else:
+                if self.z < config.sea_level:
+                    img_dir = 'app/assets/underwater/'
+                else:
+                    img_dir = 'app/assets/foliage/'
+                grass_image = Image.open(img_dir+
+                                         choice(os.listdir(img_dir)))
+                img.paste(grass_image,
+                          (randint(self.pil_coords[0], self.pil_coords[2]),
+                           randint(self.pil_coords[3], self.pil_coords[1])),
+                          grass_image)
+            
+        
+        
+        
+        
 
 
     def __eq__(self, other):
